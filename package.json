@@ -1,21 +1,22 @@
 {
   "name": "@frank-x/dailyhot-mcp",
-  "version": "0.1.2",
+  "version": "0.1.4",
+  "mcpName": "io.github.FrankXMX/dailyhotmcp",
   "description": "MCP Server - 聚合55+平台热门榜单数据的AI工具。支持的平台包括：社交媒体（微博、知乎、B站、抖音、贴吧）、技术社区（GitHub、CSDN、掘金、V2EX）、游戏（原神、崩坏3、星穹铁道、米游社、英雄联盟）、新闻资讯（澎湃、网易、腾讯、新浪）、其他（历史上的今天、天气预警、地震速报、豆瓣电影等）。每个工具支持limit参数限制返回数量，noCache参数跳过缓存。适用于LLM/RAG场景获取实时热点数据。",
   "keywords": [
     "API",
     "RSS"
   ],
-  "homepage": "https://gitee.com/dfitc/dailyhotmcp#readme",
+  "homepage": "https://github.com/FrankXMX/dailyhotmcp#readme",
   "bugs": {
-    "url": "https://gitee.com/dfitc/dailyhotmcp/issues"
+    "url": "https://github.com/FrankXMX/dailyhotmcp/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://gitee.com/dfitc/dailyhotmcp.git"
+    "url": "git+https://github.com/FrankXMX/dailyhotmcp.git"
   },
   "license": "MIT",
-  "author": "dfitc",
+  "author": "FrankXMX",
   "main": "dist/index.js",
   "bin": {
     "dailyhot-mcp": "bin/cli.mjs"

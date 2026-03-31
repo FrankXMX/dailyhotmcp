@@ -3,9 +3,9 @@
 <h2>今日热榜</h2>
 <p>一个聚合热门数据的 API 接口 | 支持 MCP 协议</p>
 <br />
-<img src="https://gitee.com/dfitc/dailyhotmcp/widgets/widget_card.svg" alt="gitee"/>
-<img src="https://gitee.com/dfitc/dailyhotmcp/star/badge.svg" alt="gitee stars"/>
-<img src="https://gitee.com/dfitc/dailyhotmcp/fork/badge.svg" alt="gitee forks"/>
+[![GitHub stars](https://img.shields.io/github/stars/FrankXMX/dailyhotmcp?style=social)](https://github.com/FrankXMX/dailyhotmcp)
+[![GitHub forks](https://img.shields.io/github/forks/FrankXMX/dailyhotmcp?style=social)](https://github.com/FrankXMX/dailyhotmcp)
+[![npm version](https://img.shields.io/npm/v/@frank-x/dailyhot-mcp)](https://www.npmjs.com/package/@frank-x/dailyhot-mcp)
 </div>
 
 ## 特性
@@ -156,7 +156,7 @@ docker run --restart always -p 6688:6688 -d imsyy/dailyhot-mcp:latest
 ### 手动部署
 
 ```bash
-git clone https://gitee.com/dfitc/dailyhotmcp.git
+git clone https://github.com/FrankXMX/dailyhotmcp.git
 cd dailyhotmcp
 npm install
 ```
@@ -201,4 +201,5 @@ fork 本仓库后即可使用一键部署。
 ## 鸣谢
 
 - [RSSHub](https://github.com/DIYgod/RSSHub)
+- [DailyHotApi](https://github.com/imsyy/DailyHotApi)
 

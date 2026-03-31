@@ -1,0 +1,29 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.FrankXMX/dailyhotmcp",
+  "description": "聚合55+平台热门榜单数据的AI工具，支持微博、知乎、B站、GitHub等平台。适用于LLM/RAG场景。",
+  "repository": {
+    "url": "https://github.com/FrankXMX/dailyhotmcp",
+    "source": "github"
+  },
+  "version": "0.1.4",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@frank-x/dailyhot-mcp",
+      "version": "0.1.4",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "description": "Your API key for the service",
+          "isRequired": true,
+          "format": "string",
+          "isSecret": true,
+          "name": "YOUR_API_KEY"
+        }
+      ]
+    }
+  ]
+}
