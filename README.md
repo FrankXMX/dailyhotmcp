@@ -36,7 +36,7 @@
   "mcpServers": {
     "dailyhot": {
       "command": "npx",
-      "args": ["-y", "@frank-x/dailyhot-mcp"]
+      "args": ["-y", "@frank-x/dailyhot-mcp@latest"]
     }
   }
 }
@@ -54,7 +54,7 @@
 ```json
 {
   "mcpServers": {
-    "dailyhot": "npx -y @frank-x/dailyhot-mcp"
+    "dailyhot": "npx -y @frank-x/dailyhot-mcp@latest"
   }
 }
 ```
