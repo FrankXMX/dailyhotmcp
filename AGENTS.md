@@ -1,42 +1,52 @@
-# DailyHotMCP - Agent Guidelines
+# DailyHotMCP - Agent 指南
 
-## Project Overview
+## 项目概览
 
-A hot list aggregation MCP Server built with TypeScript. Provides 56 Chinese platform hot list data via MCP (Model Context Protocol) tool calls.
+一个使用 TypeScript 构建的热点聚合 MCP 服务器。通过 MCP (模型上下文协议) 工具调用提供 56 个中国平台的热点数据。
 
-## Tech Stack
+## 技术栈
 
-- **Runtime**: Node.js >= 20 (ES modules)
-- **Language**: TypeScript (strict mode)
-- **Package Manager**: pnpm
+- **运行时**: Node.js >= 20 (ES 模块)
+- **语言**: TypeScript (严格模式)
+- **包管理器**: pnpm
 - **MCP SDK**: @modelcontextprotocol/sdk
-- **HTTP Client**: Axios
-- **Logging**: Winston
-- **Caching**: Redis + NodeCache
-- **Linting**: ESLint + Prettier
+- **HTTP 客户端**: Axios
+- **日志**: Winston
+- **缓存**: Redis + NodeCache
+- **代码质量**: ESLint (扁平配置) + Prettier
 
 ---
 
-## Build & Development Commands
+## 构建 & 开发命令
 
 ```bash
-# Install dependencies
+# 安装依赖
 pnpm install
 
-# Build
+# 构建 TypeScript 到 dist/
 pnpm build
 
-# Run MCP Server (via stdio)
-node dist/index.js
+# 开发（带热重载，缓存禁用）
+pnpm dev
 
-# Code quality
-pnpm lint
-pnpm format
+# 开发（带热重载，缓存启用）
+pnpm dev:cache
+
+# 运行生产构建
+pnpm start
+
+# 代码质量
+pnpm lint          # ESLint 检查
+pnpm format        # Prettier 格式化
 ```
 
-### Using with MCP Clients
+### 测试
 
-The MCP Server communicates via stdio. Configure your MCP client to spawn:
+**未配置测试框架。** 代码库中没有测试文件或测试脚本。如果添加测试，请使用 vitest 或 jest 并在 package.json 中添加适当的脚本。
+
+### 与 MCP 客户端使用
+
+MCP 服务器通过 stdio 通信。配置您的 MCP 客户端以生成：
 
 ```bash
 node dist/index.js
@@ -44,46 +54,87 @@ node dist/index.js
 
 ---
 
-## Code Style Guidelines
+## 代码风格指南
 
 ### TypeScript
 
-- **Strict mode enabled** — no implicit any, strict null checks
-- **Explicit types** for public APIs and exported functions
-- **Interfaces** for object shapes that may be extended
-- **Types** for unions, intersections, and utility types
-- **Avoid `any`** — use `unknown` with type narrowing when needed
-- **No `enum`** — use string literal unions instead
+- **启用严格模式** — 不允许隐式 any，启用严格 null 检查
+- **公共 API 和导出函数使用显式类型**
+- **使用接口** 表示可能被扩展的对象形状
+- **使用类型** 表示联合、交叉和工具类型
+- **避免 `any`** — 使用 `unknown` 并进行类型收窄时需要
+- **不使用 `enum`** — 使用字符串字面量联合代替
 
-### Naming Conventions
+### 命名约定
 
-| Element    | Convention | Example                      |
-| ---------- | ---------- | ---------------------------- |
-| Files      | kebab-case | `bilibili.ts`, `get-data.ts` |
-| Routes     | kebab-case | `weibo.ts`, `zhihu-daily.ts` |
-| Functions  | camelCase  | `getList`, `handleRoute`     |
-| Interfaces | PascalCase | `RouterData`, `ListItem`     |
-| Types      | camelCase  | `RouterResType`, `Options`   |
-| Constants  | camelCase  | `config.PORT`, `typeMap`     |
+| 元素    | 约定 | 示例                      |
+| ------- | ---- | ------------------------- |
+| 文件    | kebab-case | `bilibili.ts`, `get-data.ts` |
+| 函数    | camelCase  | `getList`, `handleRoute`     |
+| 接口    | PascalCase | `RouterData`, `ListItem`     |
+| 类型    | camelCase  | `RouterResType`, `Options`   |
+| 常量    | camelCase  | `config.PORT`, `typeMap`     |
 
-### Imports
+### 导入
 
 ```typescript
-import type { RouterData } from "../types.js";
-import { get } from "../utils/getData.js";
+import type { RouterData, ListContext, Options } from "../types.js";
+import { get, post } from "../utils/getData.js";
+import logger from "../utils/logger.js";
 ```
 
-### Formatting (Prettier)
+- 始终使用 `.js` 扩展名进行相对导入（ES 模块要求）
+- 使用 `import type` 进行仅类型导入
+- logger 使用默认导入，工具函数使用命名导入
+
+### 格式化 (Prettier)
 
 ```javascript
 {
-  singleQuote: false,
-  trailingComma: "all",
-  tabWidth: 2,
-  semi: true,
-  printWidth: 100
+  singleQuote: false,       // 优先使用双引号
+  trailingComma: "all",     // 所有位置都使用尾随逗号
+  tabWidth: 2,              // 2 空格缩进
+  semi: true,               // 需要分号
+  printWidth: 100           // 行宽限制
 }
 ```
+
+### 错误处理
+
+```typescript
+try {
+  const result = await someAsyncOperation();
+} catch (error) {
+  logger.error(`操作失败: ${error instanceof Error ? error.message : "未知错误"}`);
+  throw error; // 或者返回结构化错误响应
+}
+```
+
+- 对所有日志使用 Winston logger（导入默认导出）
+- 使用 `instanceof Error` 检查进行类型安全的错误处理
+- 错误向上传播或转换为结构化错误响应
+
+### 路由模式
+
+```typescript
+export const handleRoute = async (c: ListContext, noCache: boolean) => {
+  const listData = await getList(options, noCache);
+  return { name, title, type, total, ...listData };
+};
+```
+
+### HTTP 客户端模式
+
+```typescript
+const response = await get<ResponseType>({
+  url: "https://api.example.com/data",
+  headers: { "User-Agent": "..." },
+});
+```
+
+- 使用 `utils/getData.js` 中的 `get()` 和 `post()` 函数
+- 内置缓存通过 Redis/NodeCache
+- 泛型类型支持: `get<T>()`
 
 ---
 
@@ -95,11 +146,9 @@ src/
 ├── config.ts         # Environment config with validation
 ├── types.d.ts        # Shared TypeScript interfaces
 ├── mcp/
-│   ├── index.ts      # MCP Server with tool registration
-│   └── tools.ts      # Tool helper functions
+│   └── index.ts      # MCP Server with tool registration
 ├── routes/           # Platform data sources (56 files)
 │   ├── bilibili.ts
-│   ├── weibo.ts
 │   └── ...
 └── utils/
     ├── getData.ts    # HTTP GET/POST with caching
@@ -112,20 +161,7 @@ src/
 
 ## MCP Tools
 
-The server exposes 56 tools, one for each platform:
-
-| Tool Name | Platform |
-| --------- | -------- |
-| bilibili  | 哔哩哔哩 |
-| weibo     | 微博     |
-| zhihu     | 知乎     |
-| douyin    | 抖音     |
-| baidu     | 百度     |
-| ...       | ...      |
-
-### Tool Parameters
-
-All tools accept:
+The server exposes 56 tools, one for each platform. All tools accept:
 
 ```typescript
 {
@@ -142,20 +178,8 @@ All tools accept:
   name: "platform",
   title: "Platform Name",
   type: "热榜 · Category",
-  description: "Description",
   total: number,
-  data: [
-    {
-      id: string,
-      title: string,
-      cover?: string,
-      author?: string,
-      desc?: string,
-      hot: number,
-      url: string,
-      mobileUrl: string
-    }
-  ],
+  data: [{ id: string, title: string, hot: number, url: string, ... }],
   updateTime: string,
   fromCache: boolean
 }
