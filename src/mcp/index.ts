@@ -181,6 +181,8 @@ async function registerPlatformTool(platform: (typeof platforms)[0]) {
           data = data.slice(0, limit);
         }
 
+        const prompt = `请以友好的格式展示「${result.title}」榜单，包含：标题、热度值、原文链接。使用列表格式，每条包含序号、标题、热度、链接（使用 mobileUrl 字段）。`;
+
         return {
           content: [
             {
@@ -195,6 +197,7 @@ async function registerPlatformTool(platform: (typeof platforms)[0]) {
                 data: data,
                 updateTime: result.updateTime,
                 fromCache: result.fromCache,
+                prompt,
               }),
             },
           ],
