@@ -50,11 +50,15 @@
 
 #### OpenCode
 
-在 OpenCode 设置中添加：
+在 OpenCode 配置文件 `opencode.json` 中添加：
+
 ```json
 {
-  "mcpServers": {
-    "dailyhot": "npx -y @frank-x/dailyhot-mcp@latest"
+  "mcp": {
+    "dailyhot": {
+      "type": "local",
+      "command": ["npx", "-y", "@frank-x/dailyhot-mcp@latest"]
+    }
   }
 }
 ```
