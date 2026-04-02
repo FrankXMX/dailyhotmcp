@@ -219,6 +219,37 @@ async function registerPlatformTool(platform: (typeof platforms)[0]) {
   );
 }
 
+// 注册获取平台列表的工具
+mcpServer.registerTool(
+  "list_platforms",
+  {
+    title: "平台列表",
+    description: "获取所有可用的热门榜单平台",
+    inputSchema: z.object({}),
+  },
+  async () => {
+    const platformList = platforms.map((p) => ({
+      name: p.name,
+      title: p.title,
+      description: p.description,
+      route: p.route,
+    }));
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: JSON.stringify({
+            code: 200,
+            total: platformList.length,
+            data: platformList,
+          }),
+        },
+      ],
+    };
+  },
+);
+
 async function main() {
   try {
     logger.info("Starting DailyHot MCP Server...");
