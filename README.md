@@ -27,9 +27,9 @@
 
 本项目发布在 [MCP 注册表](https://modelcontextprotocol.io registry)，支持以下客户端：
 
-#### Claude Code / OpenCLAW / VSCode (Claude 扩展)
+#### OpenClaw
 
-在 VSCode 设置中添加 MCP 服务器配置：
+在 OpenClaw 设置中添加 MCP 服务器配置：
 
 ```json
 {
