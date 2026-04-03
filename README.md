@@ -68,6 +68,22 @@
 
 支持通过 HTTP 接口访问 MCP 服务。启动 HTTP 服务器后，配置客户端连接：
 
+**OpenCode Remote 配置**：
+
+```json
+{
+  "mcp": {
+    "dailyhot": {
+      "type": "remote",
+      "url": "http://localhost:3000/mcp",
+      "enabled": true
+    }
+  }
+}
+```
+
+> 注意：需要先启动 HTTP 服务器（见下文）。
+
 **Claude Desktop / Cursor 配置**：
 
 ```json
@@ -86,7 +102,7 @@
 
 > 注意：Claude Desktop 默认仅支持 stdio 模式。部分客户端如 **MCP Client**、**Windsurf** 或自定义客户端可能支持 HTTP 连接。
 
-**其他客户端配置**：
+**启动 HTTP 服务器**：
 
 ```bash
 # 启动 HTTP 服务器（默认端口 3000）
