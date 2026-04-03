@@ -1,9 +1,13 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import {
+  StreamableHTTPServerTransport,
+} from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
 import { readFileSync } from "fs";
 import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
+import http from "node:http";
 import logger from "../utils/logger.js";
 import type { RouterData } from "../types.js";
 
@@ -255,6 +259,9 @@ mcpServer.registerTool(
 
 async function main() {
   try {
+    const httpMode = process.argv.includes("--http") || process.env.MCP_HTTP === "1";
+    const port = parseInt(process.env.MCP_PORT || "3000", 10);
+
     logger.info("Starting DailyHot MCP Server...");
 
     for (const platform of platforms) {
@@ -264,13 +271,53 @@ async function main() {
 
     logger.info(`Registered ${platforms.length} platform tools`);
 
-    const transport = new StdioServerTransport();
-    await mcpServer.connect(transport);
+    if (httpMode) {
+      // HTTP + SSE 模式
+      logger.info(`Starting MCP Server in HTTP mode on port ${port}...`);
 
-    // 通知客户端服务器已就绪
-    console.error("MCP Server ready");
+      const transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: undefined, //  stateless 模式
+      });
 
-    logger.info("MCP Server running via stdio (use with MCP client)");
+      await mcpServer.connect(transport);
+
+      // 创建 HTTP 服务器
+      const server = http.createServer(async (req, res) => {
+        // 处理 MCP 路由
+        if (req.url === "/mcp" || req.url?.startsWith("/mcp?")) {
+          try {
+            await transport.handleRequest(req, res);
+          } catch (error) {
+            logger.error(`HTTP transport error: ${error}`);
+            if (!res.headersSent) {
+              res.writeHead(500, { "Content-Type": "application/json" });
+              res.end(JSON.stringify({ error: "Internal server error" }));
+            }
+          }
+        } else if (req.url === "/health") {
+          // 健康检查端点
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ status: "ok", platforms: platforms.length }));
+        } else {
+          res.writeHead(404, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Not found" }));
+        }
+      });
+
+      server.listen(port, () => {
+        console.error(`MCP HTTP Server ready at http://localhost:${port}/mcp`);
+        logger.info(`MCP HTTP Server running at http://localhost:${port}/mcp`);
+      });
+    } else {
+      // Stdio 模式（默认）
+      const transport = new StdioServerTransport();
+      await mcpServer.connect(transport);
+
+      // 通知客户端服务器已就绪
+      console.error("MCP Server ready");
+
+      logger.info("MCP Server running via stdio (use with MCP client)");
+    }
   } catch (error) {
     logger.error(`MCP Server error: ${error}`);
     process.exit(1);
