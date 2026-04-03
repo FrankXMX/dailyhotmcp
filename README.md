@@ -42,10 +42,11 @@
 }
 ```
 
-重启后即可对话使用，支持 50+ 平台热门数据查询，如：
+重启后即可对话使用，支持 55+ 平台热门数据查询，如：
 ```
 获取微博热搜榜前10条数据
 获取 B 站热门视频
+列出所有可用的平台
 ```
 
 #### OpenCode
@@ -62,6 +63,26 @@
   }
 }
 ```
+
+#### HTTP + SSE 模式
+
+支持通过 HTTP 接口访问 MCP 服务：
+
+```bash
+# 启动 HTTP 服务器（默认端口 3000）
+npx @frank-x/dailyhot-mcp --http
+
+# 或使用环境变量
+MCP_HTTP=1 npx @frank-x/dailyhot-mcp
+
+# 自定义端口
+MCP_PORT=8080 npx @frank-x/dailyhot-mcp --http
+```
+
+HTTP 端点：
+- `POST /mcp` - 发送 JSON-RPC 请求
+- `GET /mcp` - SSE 长连接（接收服务端推送）
+- `GET /health` - 健康检查
 
 #### 其他 MCP 客户端
 同样配置即可使用。
@@ -80,11 +101,31 @@ import { main } from "@frank-x/dailyhot-mcp";
  * @returns {Promise<void>}
  */
 main();
+
+/**
+ * 启动 MCP HTTP 服务
+ * @param {number} port 端口号，默认 3000
+ */
+main({ port: 8080 });
 ```
+
+### MCP 工具说明
+
+所有 MCP 工具支持以下参数：
+- `limit?: number` - 限制返回数量
+- `noCache?: boolean` - 跳过缓存，强制获取最新数据
+
+**list_platforms** - 获取所有可用平台列表（无参数）
+
+返回数据包含 `prompt` 字段，指导大模型以友好格式展示结果。
 
 ## 接口总览
 
-> 项目支持 50+ 平台热门数据，可通过 MCP 工具或 npm 包调用。
+> 项目支持 55+ 平台热门数据，可通过 MCP 工具或 npm 包调用。
+
+### MCP 工具
+
+所有平台都作为 MCP 工具注册，可通过 `list_platforms` 工具获取完整列表。
 
 <details>
 <summary>查看支持的平台</summary>

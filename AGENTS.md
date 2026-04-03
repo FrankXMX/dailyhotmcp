@@ -2,7 +2,7 @@
 
 ## 项目概览
 
-一个使用 TypeScript 构建的热点聚合 MCP 服务器。通过 MCP (模型上下文协议) 工具调用提供 56 个中国平台的热点数据。
+一个使用 TypeScript 构建的热点聚合 MCP 服务器。通过 MCP (模型上下文协议) 工具调用提供 58 个平台的热点数据。
 
 ## 技术栈
 
@@ -46,11 +46,21 @@ pnpm format        # Prettier 格式化
 
 ### 与 MCP 客户端使用
 
-MCP 服务器通过 stdio 通信。配置您的 MCP 客户端以生成：
+支持两种模式：
 
+**Stdio 模式**（默认）:
 ```bash
 node dist/index.js
 ```
+
+**HTTP + SSE 模式**:
+```bash
+node dist/index.js --http
+# 或
+MCP_HTTP=1 node dist/index.js
+```
+
+HTTP 端点：`POST /mcp`、`GET /mcp`、`GET /health`
 
 ---
 
@@ -147,7 +157,7 @@ src/
 ├── types.d.ts        # Shared TypeScript interfaces
 ├── mcp/
 │   └── index.ts      # MCP Server with tool registration
-├── routes/           # Platform data sources (56 files)
+├── routes/           # Platform data sources (58 files)
 │   ├── bilibili.ts
 │   └── ...
 └── utils/
@@ -161,7 +171,7 @@ src/
 
 ## MCP Tools
 
-The server exposes 56 tools, one for each platform. All tools accept:
+The server exposes 58 tools, one for each platform, plus list_platforms. All tools accept:
 
 ```typescript
 {
@@ -181,7 +191,8 @@ The server exposes 56 tools, one for each platform. All tools accept:
   total: number,
   data: [{ id: string, title: string, hot: number, url: string, ... }],
   updateTime: string,
-  fromCache: boolean
+  fromCache: boolean,
+  prompt: string  // 提示大模型如何友好展示给用户
 }
 ```
 
