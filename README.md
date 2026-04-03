@@ -51,7 +51,7 @@
 
 #### OpenCode
 
-在 OpenCode 配置文件 `opencode.json` 中添加：
+在 OpenCode 配置文件 `opencode.json` 中添加（参考 [OpenCode MCP 配置](https://opencode.ai/docs/zh-cn/mcp-servers/)）：
 
 ```json
 {
@@ -66,7 +66,27 @@
 
 #### HTTP + SSE 模式
 
-支持通过 HTTP 接口访问 MCP 服务：
+支持通过 HTTP 接口访问 MCP 服务。启动 HTTP 服务器后，配置客户端连接：
+
+**Claude Desktop / Cursor 配置**：
+
+```json
+{
+  "mcpServers": {
+    "dailyhot-http": {
+      "command": "npx",
+      "args": ["-y", "@frank-x/dailyhot-mcp@latest", "--http"],
+      "env": {
+        "MCP_PORT": "3000"
+      }
+    }
+  }
+}
+```
+
+> 注意：Claude Desktop 默认仅支持 stdio 模式。部分客户端如 **MCP Client**、**Windsurf** 或自定义客户端可能支持 HTTP 连接。
+
+**其他客户端配置**：
 
 ```bash
 # 启动 HTTP 服务器（默认端口 3000）
@@ -86,6 +106,41 @@ HTTP 端点：
 
 #### 其他 MCP 客户端
 同样配置即可使用。
+
+#### 使用 SDK 连接 HTTP 模式
+
+可以使用 MCP SDK 的 `StreamableHTTPClientTransport` 连接 HTTP 服务器：
+
+```typescript
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+
+async function main() {
+  const client = new Client(
+    {
+      name: "dailyhot-client",
+      version: "1.0.0",
+    },
+    {
+      capabilities: {},
+    }
+  );
+
+  await client.connect(
+    new StreamableHTTPClientTransport(new URL("http://localhost:3000/mcp"))
+  );
+
+  // 调用工具
+  const result = await client.callTool({
+    name: "weibo",
+    arguments: { limit: 10 },
+  });
+
+  console.log(result);
+}
+
+main();
+```
 
 ### 作为 npm 包使用
 
