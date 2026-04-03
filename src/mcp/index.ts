@@ -296,6 +296,7 @@ async function main() {
 
             await transport.handleRequest(req, res, parsedBody);
           } catch (error) {
+            console.error("MCP HTTP error:", error);
             logger.error(`HTTP transport error: ${error}`);
             if (!res.headersSent) {
               res.writeHead(500, { "Content-Type": "application/json" });

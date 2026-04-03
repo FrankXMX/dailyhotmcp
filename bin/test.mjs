@@ -174,7 +174,9 @@ class HttpTransport {
         console.error("Transport error:", error);
       };
 
+      console.error("DEBUG: About to connect...");
       await this.client.connect(transport);
+      console.error("DEBUG: Connected!");
       return;
     } catch (err) {
       console.error("MCP SDK error:", err.message);
