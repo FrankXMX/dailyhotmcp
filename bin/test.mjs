@@ -160,11 +160,25 @@ class HttpTransport {
         { capabilities: {} }
       );
 
-      const transport = new StreamableHTTPClientTransport(this.url);
+      const transport = new StreamableHTTPClientTransport(this.url, {
+        requestInit: {
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json, text/event-stream",
+          },
+        },
+      });
+
+      // 添加错误事件监听
+      transport.onerror = (error) => {
+        console.error("Transport error:", error);
+      };
+
       await this.client.connect(transport);
       return;
     } catch (err) {
-      console.log("MCP SDK not available:", err.message);
+      console.error("MCP SDK error:", err.message);
+      console.error("Full error:", err);
       console.log("\nFor HTTP mode, use the MCP SDK directly:");
       console.log(`
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";

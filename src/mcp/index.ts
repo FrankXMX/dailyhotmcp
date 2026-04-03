@@ -286,7 +286,15 @@ async function main() {
         // 处理 MCP 路由
         if (req.url === "/mcp" || req.url?.startsWith("/mcp?")) {
           try {
-            await transport.handleRequest(req, res);
+            // 读取请求体并传递给 transport
+            const buffers = [];
+            for await (const chunk of req) {
+              buffers.push(chunk);
+            }
+            const body = Buffer.concat(buffers).toString();
+            const parsedBody = body ? JSON.parse(body) : undefined;
+
+            await transport.handleRequest(req, res, parsedBody);
           } catch (error) {
             logger.error(`HTTP transport error: ${error}`);
             if (!res.headersSent) {
