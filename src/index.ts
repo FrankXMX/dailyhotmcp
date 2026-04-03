@@ -2,7 +2,12 @@ import { main } from "./mcp/index.js";
 
 export { main };
 
-// Only run main when executed directly (not when imported)
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main();
+// For backward compatibility: check if this is run directly via node dist/index.js
+// (but NOT when imported from bin/cli.mjs)
+const isDirectRun =
+  process.argv[1]?.endsWith("/dist/index.js") ||
+  process.argv[1]?.endsWith("\\dist\\index.js");
+
+if (isDirectRun) {
+  await main();
 }
