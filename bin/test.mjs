@@ -2,6 +2,11 @@
 /**
  * DailyHot MCP Test Client
  * 支持 stdio 和 HTTP 两种模式测试 MCP Server
+ *
+ * 使用方式:
+ *   node bin/test.mjs list_tools                           # stdio 模式
+ *   node bin/test.mjs call weibo --limit 5                 # stdio 模式
+ *   node bin/test.mjs --mode http list_tools               # HTTP 模式
  */
 
 import { spawn } from "node:child_process";
@@ -42,31 +47,23 @@ function parseArgs() {
   return options;
 }
 
-// JSON-RPC request helper
 let requestId = 1;
-function createRequest(method, params = {}) {
-  return JSON.stringify({
-    jsonrpc: "2.0",
-    id: requestId++,
-    method,
-    params,
-  });
-}
+const pendingRequests = new Map();
 
-// Stdio transport
+// Stdio transport - 完全支持
 class StdioTransport {
   constructor(command, serverArgs) {
     this.command = command;
     this.serverArgs = serverArgs;
     this.process = null;
     this.buffer = "";
-    this.resolvers = {};
   }
 
   async connect() {
     return new Promise((resolve, reject) => {
       this.process = spawn(this.command, this.serverArgs, {
         stdio: ["pipe", "pipe", "pipe"],
+        env: { ...process.env },
       });
 
       this.process.stdout.on("data", (data) => {
@@ -75,44 +72,44 @@ class StdioTransport {
       });
 
       this.process.stderr.on("data", (data) => {
-        console.error("Server:", data.toString().trim());
+        const msg = data.toString().trim();
+        if (msg) {
+          console.error("Server:", msg);
+        }
       });
 
       this.process.on("error", reject);
       this.process.on("close", (code) => {
-        if (code !== 0) {
+        if (code !== 0 && code !== null) {
           console.error(`Server exited with code ${code}`);
         }
       });
 
-      // Wait a bit for server to initialize
-      setTimeout(resolve, 2000);
+      setTimeout(() => resolve(), 3000);
     });
   }
 
   processBuffer() {
-    // Process complete JSON-RPC messages
     const lines = this.buffer.split("\n");
     for (let i = 0; i < lines.length - 1; i++) {
       const line = lines[i].trim();
       if (line) {
         try {
           const response = JSON.parse(line);
-          if (response.id && this.resolvers[response.id]) {
-            const resolver = this.resolvers[response.id];
-            delete this.resolvers[response.id];
+          if (response.id && pendingRequests.has(response.id)) {
+            const { resolve, reject } = pendingRequests.get(response.id);
+            pendingRequests.delete(response.id);
             if (response.error) {
-              resolver.reject(new Error(response.error.message));
+              reject(new Error(response.error.message));
             } else {
-              resolver.resolve(response.result);
+              resolve(response.result);
             }
           }
         } catch {
-          // Not valid JSON, skip
+          // Not valid JSON
         }
       }
     }
-    // Keep incomplete line in buffer
     this.buffer = lines[lines.length - 1];
   }
 
@@ -128,11 +125,10 @@ class StdioTransport {
     this.process.stdin.write(request + "\n");
 
     return new Promise((resolve, reject) => {
-      this.resolvers[id] = { resolve, reject };
-      // Timeout after 30 seconds
+      pendingRequests.set(id, { resolve, reject });
       setTimeout(() => {
-        if (this.resolvers[id]) {
-          delete this.resolvers[id];
+        if (pendingRequests.has(id)) {
+          pendingRequests.delete(id);
           reject(new Error("Request timeout"));
         }
       }, 30000);
@@ -146,97 +142,58 @@ class StdioTransport {
   }
 }
 
-// HTTP transport
+// HTTP transport - 使用 MCP SDK
 class HttpTransport {
   constructor(url) {
     this.url = new URL(url);
+    this.client = null;
   }
 
   async connect() {
-    // Just test connection
-    return new Promise((resolve, reject) => {
-      const req = http.request(
-        {
-          hostname: this.url.hostname,
-          port: this.url.port || 80,
-          path: this.url.pathname + "?jsonrpc=2.0",
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json, text/event-stream",
-          },
-        },
-        (res) => {
-          if (res.statusCode && res.statusCode >= 400) {
-            reject(new Error(`HTTP ${res.statusCode}`));
-          } else {
-            resolve();
-          }
-        }
+    // 尝试使用 MCP SDK
+    try {
+      const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
+      const { StreamableHTTPClientTransport } = await import("@modelcontextprotocol/sdk/client/streamableHttp.js");
+
+      this.client = new Client(
+        { name: "dailyhot-test-client", version: "1.0.0" },
+        { capabilities: {} }
       );
-      req.on("error", reject);
-      // MCP requires initialize first
-      req.write(
-        JSON.stringify({
-          jsonrpc: "2.0",
-          id: 1,
-          method: "initialize",
-          params: {
-            protocolVersion: "2024-11-05",
-            capabilities: {},
-            clientInfo: { name: "dailyhot-test-client", version: "1.0.0" },
-          },
-        })
-      );
-      req.end();
-    });
+
+      const transport = new StreamableHTTPClientTransport(this.url);
+      await this.client.connect(transport);
+      return;
+    } catch (err) {
+      console.log("MCP SDK not available:", err.message);
+      console.log("\nFor HTTP mode, use the MCP SDK directly:");
+      console.log(`
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+
+const client = new Client({ name: "test", version: "1.0.0" }, { capabilities: {} });
+await client.connect(new StreamableHTTPClientTransport(new URL("http://localhost:3000/mcp")));
+const result = await client.callTool({ name: "weibo", arguments: { limit: 5 } });
+`);
+      process.exit(1);
+    }
   }
 
   async send(method, params = {}) {
-    const requestData = JSON.stringify({
-      jsonrpc: "2.0",
-      id: requestId++,
-      method,
-      params,
-    });
-
-    return new Promise((resolve, reject) => {
-      const req = http.request(
-        {
-          hostname: this.url.hostname,
-          port: this.url.port || 80,
-          path: this.url.pathname,
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-        },
-        (res) => {
-          let data = "";
-          res.on("data", (chunk) => (data += chunk));
-          res.on("end", () => {
-            try {
-              const response = JSON.parse(data);
-              if (response.error) {
-                reject(new Error(response.error.message));
-              } else {
-                resolve(response.result);
-              }
-            } catch (e) {
-              reject(e);
-            }
-          });
-        }
-      );
-      req.on("error", reject);
-      req.write(requestData);
-      req.end();
-    });
+    if (method === "tools/list") {
+      return await this.client.request({ method: "tools/list" }, params);
+    } else if (method === "tools/call") {
+      return await this.client.callTool({
+        name: params.name,
+        arguments: params.arguments || {},
+      });
+    }
+    throw new Error(`Unsupported method: ${method}`);
   }
 
   close() {
-    // Nothing to close for HTTP
+    if (this.client) {
+      this.client.close();
+    }
   }
 }
 
@@ -273,11 +230,14 @@ async function callTool(transport, toolName, toolArgs) {
     arguments: parsedArgs,
   });
 
-  // 解析 JSON 并格式化输出
   if (result.content && result.content[0]?.type === "text") {
-    const data = JSON.parse(result.content[0].text);
-    console.log("Response:");
-    console.log(JSON.stringify(data, null, 2));
+    try {
+      const data = JSON.parse(result.content[0].text);
+      console.log("Response:");
+      console.log(JSON.stringify(data, null, 2));
+    } catch {
+      console.log(result.content[0].text);
+    }
   } else {
     console.log(result);
   }
@@ -298,7 +258,8 @@ Usage:
   node bin/test.mjs [options] <action> [tool args]
 
 Options:
-  --mode <stdio>         Connection mode (currently only stdio supported)
+  --mode <stdio|http>    Connection mode (default: stdio)
+  --url <url>            HTTP server URL (default: http://localhost:3000/mcp)
   --command <cmd>        Command to start MCP server (default: node)
   -- <args...>           Arguments passed to server process
 
@@ -309,43 +270,35 @@ Actions:
   help                   Show this help
 
 Examples:
-  # List tools (uses local dist/index.js)
+  # Stdio mode (recommended)
   node bin/test.mjs list_tools
-
-  # Call weibo tool
   node bin/test.mjs call weibo --limit 5
-
-  # Use npx to run remote version
   node bin/test.mjs --command npx -- -- -y @frank-x/dailyhot-mcp@latest list_tools
 
-  # HTTP mode is not yet supported - use MCP SDK client directly
+  # HTTP mode - requires MCP SDK with compatible zod version
+  node dist/index.js --http
+  node bin/test.mjs --mode http list_tools
 `);
     return;
-  }
-
-  // Only stdio mode is supported for now
-  if (options.mode === "http") {
-    console.log("HTTP mode requires using MCP SDK client directly.");
-    console.log("Example:");
-    console.log(`
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-
-const client = new Client({ name: "test", version: "1.0.0" }, { capabilities: {} });
-await client.connect(new StreamableHTTPClientTransport(new URL("http://localhost:3000/mcp")));
-const result = await client.callTool({ name: "weibo", arguments: { limit: 5 } });
-console.log(result);
-`);
-    process.exit(1);
   }
 
   let transport;
 
   try {
-    transport = new StdioTransport(options.command, options.serverArgs);
-    console.log(`Starting MCP server: ${options.command} ${options.serverArgs.join(" ")}`);
-    await transport.connect();
-    console.log("Connected to MCP server\n");
+    if (options.mode === "stdio") {
+      transport = new StdioTransport(options.command, options.serverArgs);
+      console.log(`Starting MCP server: ${options.command} ${options.serverArgs.join(" ")}`);
+      await transport.connect();
+      console.log("Connected to MCP server\n");
+    } else if (options.mode === "http") {
+      transport = new HttpTransport(options.url);
+      console.log(`Connecting to HTTP MCP server: ${options.url}`);
+      await transport.connect();
+      console.log("Connected to MCP server\n");
+    } else {
+      console.error(`Unknown mode: ${options.mode}`);
+      process.exit(1);
+    }
 
     switch (options.action) {
       case "list_tools":
